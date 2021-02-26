@@ -6,17 +6,49 @@
 //
 
 import UIKit
+import Flurry_iOS_SDK
 
 @main
-class AppDelegate: UIResponder, UIApplicationDelegate {
-
-
+class AppDelegate: UIResponder, UIApplicationDelegate, FlurryMessagingDelegate, UNUserNotificationCenterDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        registerForNotifications(application)
+        registerFlurryMessaging(launchOptions)
         return true
     }
-
+    
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        FlurryMessaging.setDeviceToken(deviceToken)
+        
+        let deviceTokenString = deviceToken.reduce("", {$0 + String(format: "%02X", $1)})
+        print("Push token : \(deviceTokenString)")
+    }
+    
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("push notifications not available for device...")
+    }
+    
+    func registerForNotifications(_ application: UIApplication) {
+        UNUserNotificationCenter.current().delegate = self
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(
+            options: authOptions,
+            completionHandler: {_, _ in })
+        application.registerForRemoteNotifications()
+    }
+    
+    func registerFlurryMessaging(_ launchOptions: [UIApplication.LaunchOptionsKey: Any]?) {
+        //Step1 : Call the Integration API
+        FlurryMessaging.setAutoIntegrationForMessaging()
+        
+        //Step2 : (Optional): Get a callback
+        FlurryMessaging.setMessagingDelegate(self)
+        
+        //Step3 : Start Flurry session
+        let builder = FlurrySessionBuilder.init().withIncludeBackgroundSessions(inMetrics: true)
+        Flurry.startSession("JQP5SUUPLAMD9NRE8667", withOptions: launchOptions, with: builder)
+    }
+    
     // MARK: UISceneSession Lifecycle
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
